@@ -8,7 +8,11 @@ def check_internet():
     url='http://www.google.com/'
     timeout=5
     try:
-        _ = requests.get(url, timeout=timeout)
+        response = requests.get(url, timeout=timeout)
+        tree = html.fromstring(response.text)
+        title = tree.find('.//title').text
+        if title != 'Google':
+            return False
         return True
     except requests.ConnectionError:
         print("İnternet not working!")
