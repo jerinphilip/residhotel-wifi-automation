@@ -4,7 +4,18 @@ import requests
 from lxml import html
 
 
-if __name__ == '__main__':
+def check_internet():
+    url='http://www.google.com/'
+    timeout=5
+    try:
+        _ = requests.get(url, timeout=timeout)
+        return True
+    except requests.ConnectionError:
+        print("İnternet not working!")
+    return False
+
+
+def login_routine():
     welcome = 'http://passman02.wifipass.org/w2p/login-url.php'
     welcome_real = 'http://passman02.wifipass.org/w2p/login-url-real.php'
 
@@ -59,3 +70,10 @@ if __name__ == '__main__':
         response = session.post(login_url, data=login_data)
         print(response.text)
 
+
+if __name__ == '__main__':
+    REMOTE_SERVER = "one.one.one.one"
+    if check_internet():
+        print("Connected; Not trying again!")
+    else:
+        login_routine()
