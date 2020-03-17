@@ -20,9 +20,6 @@ def check_internet():
 
 
 def login_routine():
-    welcome = 'http://passman02.wifipass.org/w2p/login-url.php'
-    welcome_real = 'http://passman02.wifipass.org/w2p/login-url-real.php'
-
     with requests.Session() as session:
         headers = {
             'Connection': 'keep-alive',
@@ -43,8 +40,14 @@ def login_routine():
             ('domain', 'controleur.wifipass.org'),
             ('mac', 'A1-E2-F5-E1-10-78')
         )
-        response = session.get(welcome, params=params)
-        response = session.get(welcome_real, params=params)
+
+        # The following two requests seem to be redundant.
+
+        # welcome = 'http://passman02.wifipass.org/w2p/login-url.php'
+        # response = session.get(welcome, params=params)
+        # welcome_real = 'http://passman02.wifipass.org/w2p/login-url-real.php'
+        # response = session.get(welcome_real, params=params)
+
         registration = 'http://passman02.wifipass.org/w2p/formulaire_fin.php?id=resid_le_royal&domain=controleur.wifipass.org'
         data = {
             'registration[firstname]' : 'Darth',
@@ -56,8 +59,6 @@ def login_routine():
         }
 
         response = session.post(registration, params=params, data=data)
-
-        login_url = 'http://controleur.wifipass.org/goform/HtmlLoginRequest'
 
         def get_login_data(response):
             tree = html.fromstring(response.text)
@@ -71,13 +72,14 @@ def login_routine():
             return login_data
 
         login_data = get_login_data(response)
+        login_url = 'http://controleur.wifipass.org/goform/HtmlLoginRequest'
         response = session.post(login_url, data=login_data)
         print(response.text)
 
 
 if __name__ == '__main__':
-    REMOTE_SERVER = "one.one.one.one"
-    if check_internet():
-        print("Connected; Not trying again!")
-    else:
-        login_routine()
+    # REMOTE_SERVER = "one.one.one.one"
+    # if check_internet():
+    #     print("Connected; Not trying again!")
+    # else:
+    login_routine()
