@@ -115,8 +115,15 @@ if __name__ == '__main__':
     if status == 'connectivity-change':
         if check_is_residhotel():
             logging.info("{} on Wifipass".format(status))
-        while not check_internet():
+
+        tries = 0
+        max_tries = 10
+
+        while not check_internet() and tries < max_tries:
+            tries += 1
             guarded_login()
-        logging.info("connection succeeded.")
+
+        if check_internet():
+            logging.info("connection succeeded.")
 
 
