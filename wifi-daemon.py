@@ -6,6 +6,7 @@ import subprocess as sp
 import re
 import sys
 import logging
+import time
 
 def check_is_residhotel():
     try:
@@ -14,13 +15,13 @@ def check_is_residhotel():
         iface, ssid = pattern.match(output).groups()
         return (ssid == 'Wifipass' and iface == 'wlp2s0')
     except Exception as e:
-        print(e)
+        logging.debug(e)
 
 
 
 def check_internet():
-    url='http://www.google.com/'
-    timeout=5
+    url = 'http://www.google.com/'
+    timeout = 5
     try:
         response = requests.get(url, timeout=timeout)
         tree = html.fromstring(response.text)
@@ -28,8 +29,9 @@ def check_internet():
         if title != 'Google':
             return False
         return True
-    except requests.ConnectionError:
-        print("İnternet not working!")
+    except requests.ConnectionError as e:
+        logging.info("Connectivity issues detected.")
+        logging.debug(e)
     return False
 
 
@@ -88,7 +90,7 @@ def login_routine():
         login_data = get_login_data(response)
         login_url = 'http://controleur.wifipass.org/goform/HtmlLoginRequest'
         response = session.post(login_url, data=login_data)
-        logging.info(response.text)
+        logging.debug('Login status: {}'.format(response.status_code))
 
 
 if __name__ == '__main__':
@@ -96,16 +98,25 @@ if __name__ == '__main__':
     logging.basicConfig(filename=logfile, level=logging.INFO,
             format='%(asctime)s %(message)s')
     iface, status = sys.argv[1], sys.argv[2]
+    
+    def guarded_login():
+        logging.info("Attempting relogin.")
+        try:
+            login_routine()
+        except Exception as e:
+            logging.debug(e)
+        time.sleep(5)
 
     if iface == 'wlp2s0':
         logging.info("iface ({}) -> event ({})".format(iface, status))
         if check_is_residhotel():
-            try:
-                login_routine()
-            except Exception as e:
-                logging.info(e)
+            guarded_login()
 
     if status == 'connectivity-change':
         if check_is_residhotel():
             logging.info("{} on Wifipass".format(status))
+        while not check_internet():
+            guarded_login()
+        logging.info("connection succeeded.")
+
 
