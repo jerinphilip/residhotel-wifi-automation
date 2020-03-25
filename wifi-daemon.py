@@ -2,6 +2,20 @@
 
 import requests
 from lxml import html
+import subprocess as sp
+import re
+import sys
+import logging
+
+def check_is_residhotel():
+    try:
+        output = sp.check_output(['iwgetid']).decode()
+        pattern = re.compile('(\w*)\s+ESSID:"(.*)"')
+        iface, ssid = pattern.match(output).groups()
+        return (ssid == 'Wifipass' and iface == 'wlp2s0')
+    except Exception as e:
+        print(e)
+
 
 
 def check_internet():
@@ -74,12 +88,24 @@ def login_routine():
         login_data = get_login_data(response)
         login_url = 'http://controleur.wifipass.org/goform/HtmlLoginRequest'
         response = session.post(login_url, data=login_data)
-        print(response.text)
+        logging.info(response.text)
 
 
 if __name__ == '__main__':
-    # REMOTE_SERVER = "one.one.one.one"
-    # if check_internet():
-    #     print("Connected; Not trying again!")
-    # else:
-    login_routine()
+    logfile = '/var/log/residhotel-login-dispatch.log'
+    logging.basicConfig(filename=logfile, level=logging.INFO,
+            format='%(asctime)s %(message)s')
+    iface, status = sys.argv[1], sys.argv[2]
+
+    if iface == 'wlp2s0':
+        logging.info("iface ({}) -> event ({})".format(iface, status))
+        if check_is_residhotel():
+            try:
+                login_routine()
+            except Exception as e:
+                logging.info(e)
+
+    if status == 'connectivity-change':
+        if check_is_residhotel():
+            logging.info("{} on Wifipass".format(status))
+

@@ -1,0 +1,6 @@
+#!/bin/sh
+
+if [ "$2" = "vpn-up" ]; then
+    /sbin/ifconfig "$1" mtu 600
+fi
+
