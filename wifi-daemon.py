@@ -7,6 +7,8 @@ import re
 import sys
 import logging
 import time
+import json
+import os
 
 def check_is_residhotel():
     try:
@@ -21,7 +23,7 @@ def check_is_residhotel():
 
 def check_internet():
     url = 'http://www.google.com/'
-    timeout = 5
+    timeout = 2
     try:
         response = requests.get(url, timeout=timeout)
         tree = html.fromstring(response.text)
@@ -54,7 +56,7 @@ def login_routine():
         params = (
             ('id', 'resid_le_royal'),
             ('domain', 'controleur.wifipass.org'),
-            ('mac', 'A1-E2-F5-E1-10-78')
+            ('mac', 'A2-E2-F5-E1-10-78')
         )
 
         # The following two requests seem to be redundant.
@@ -90,7 +92,23 @@ def login_routine():
         login_data = get_login_data(response)
         login_url = 'http://controleur.wifipass.org/goform/HtmlLoginRequest'
         response = session.post(login_url, data=login_data)
-        logging.debug('Login status: {}'.format(response.status_code))
+        logging.debug('Init status: {}'.format(response.status_code))
+        
+        username = login_data['username']
+        welcome_url ='http://passman02.wifipass.org/w2p/welcome-url.php'
+        params = (
+            ('id', 'resid_le_royal'),
+            ('domain', 'controleur.wifipass.org'),
+            ('login', username)
+        )
+
+        data = {
+           'SessionUrl': 'http://controleur.wifipass.org:80/session.asp'
+        }
+
+        response = session.post(welcome_url, params=params, data=data)
+        logging.info("Login status: {}".format(response.status_code))
+
 
 
 if __name__ == '__main__':
@@ -98,6 +116,9 @@ if __name__ == '__main__':
     logging.basicConfig(filename=logfile, level=logging.INFO,
             format='%(asctime)s %(message)s')
     iface, status = sys.argv[1], sys.argv[2]
+
+    wait = 2 # seconds to wait
+    max_retries = 10 # no of retries
     
     def guarded_login():
         logging.info("Attempting relogin.")
@@ -105,25 +126,25 @@ if __name__ == '__main__':
             login_routine()
         except Exception as e:
             logging.debug(e)
-        time.sleep(5)
+        time.sleep(wait)
+
+    def guarded_login_with_retries(retries):
+        tries = 0
+        while not check_internet() and tries < retries:
+            tries += 1
+            guarded_login()
+        if check_internet():
+            logging.info("connection succeeded.")
+
 
     if iface == 'wlp2s0':
         logging.info("iface ({}) -> event ({})".format(iface, status))
-        if check_is_residhotel():
-            guarded_login()
+        if check_is_residhotel() and status in ['up']:
+            guarded_login_with_retries(max_retries)
 
     if status == 'connectivity-change':
         if check_is_residhotel():
             logging.info("{} on Wifipass".format(status))
-
-        tries = 0
-        max_tries = 10
-
-        while not check_internet() and tries < max_tries:
-            tries += 1
-            guarded_login()
-
-        if check_internet():
-            logging.info("connection succeeded.")
+            guarded_login_with_retries(max_retries)
 
 
